@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>德州扑克胜率计算器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a472a;
+            min-height: 100vh;
+            color: white;
+            padding: 10px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        h1 { text-align: center; padding: 15px; font-size: 1.4rem; }
+        
+        .section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+        .section-title { font-size: 0.85rem; color: #ffd700; margin-bottom: 12px; font-weight: 600; }
+        
+        .ranks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 15px; }
+        .rank-btn {
+            aspect-ratio: 1; border: none; border-radius: 10px; font-size: 1.1rem;
+            font-weight: bold; background: #4caf50; color: white; cursor: pointer;
+        }
+        .rank-btn.selected { background: #ffd700; color: #333; }
+        
+        .suits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .suit-btn {
+            aspect-ratio: 1.2; border: none; border-radius: 12px; font-size: 2rem;
+            background: white; cursor: pointer;
+        }
+        .suit-btn.spades, .suit-btn.clubs { color: #212121; }
+        .suit-btn.hearts, .suit-btn.diamonds { color: #d32f2f; }
+        .suit-btn.selected { background: #ffd700; }
+        
+        .current { text-align: center; padding: 20px; font-size: 3rem; font-weight: bold; min-height: 80px; }
+        
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .btn {
+            padding: 16px; border: none; border-radius: 12px; font-size: 1rem;
+            font-weight: 700; cursor: pointer; color: white;
+        }
+        .btn-hole { background: #2196f3; }
+        .btn-community { background: #ff9800; }
+        .btn-calc { background: #4caf50; grid-column: span 2; font-size: 1.1rem; }
+        .btn-reset { background: #f44336; grid-column: span 2; }
+        
+        .selected-cards { display: flex; flex-wrap: wrap; gap: 10px; min-height: 60px; align-items: center; }
+        .card-tag {
+            background: white; padding: 10px 15px; border-radius: 10px;
+            font-size: 1.3rem; font-weight: bold; color: #212121;
+        }
+        .card-tag.red { color: #d32f2f; }
+        .empty-hint { color: rgba(255,255,255,0.4); font-size: 0.9rem; }
+        
+        .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        select { padding: 12px; border-radius: 10px; border: none; font-size: 1rem; }
+        
+        .result {
+            background: rgba(0,0,0,0.3); border-radius: 16px; padding: 25px;
+            text-align: center; display: none;
+        }
+        .result.show { display: block; }
+        .equity-big { font-size: 4rem; font-weight: 800; color: #00e676; }
+        .advice { margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 1rem; }
+        .advice.strong { background: #2e7d32; }
+        .advice.good { background: #4caf50; }
+        .advice.ok { background: #ff9800; }
+        .advice.weak { background: #f44336; }
+        .advice.fold { background: #616161; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🃏 德州扑克胜率计算器</h1>
+        
+        <div class="section">
+            <div class="section-title">选择点数</div>
+            <div class="ranks" id="ranks">
+                <button class="rank-btn" data-rank="2">2</button>
+                <button class="rank-btn" data-rank="3">3</button>
+                <button class="rank-btn" data-rank="4">4</button>
+                <button class="rank-btn" data-rank="5">5</button>
+                <button class="rank-btn" data-rank="6">6</button>
+                <button class="rank-btn" data-rank="7">7</button>
+                <button class="rank-btn" data-rank="8">8</button>
+                <button class="rank-btn" data-rank="9">9</button>
+                <button class="rank-btn" data-rank="10">10</button>
+                <button class="rank-btn" data-rank="J">J</button>
+                <button class="rank-btn" data-rank="Q">Q</button>
+                <button class="rank-btn" data-rank="K">K</button>
+                <button class="rank-btn" data-rank="A">A</button>
+            </div>
+            
+            <div class="section-title">选择花色</div>
+            <div class="suits" id="suits">
+                <button class="suit-btn spades" data-suit="S">♠</button>
+                <button class="suit-btn hearts" data-suit="H">♥</button>
+                <button class="suit-btn diamonds" data-suit="D">♦</button>
+                <button class="suit-btn clubs" data-suit="C">♣</button>
+            </div>
+            
+            <div class="current" id="current">请选择</div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-hole" onclick="addToHole()">➕ 手牌</button>
+            <button class="btn btn-community" onclick="addToCommunity()">➕ 公共牌</button>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">手牌 (<span id="holeCount">0</span>/2)</div>
+            <div class="selected-cards" id="holeCards"><span class="empty-hint">点击添加</span></div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">公共牌 (<span id="commCount">0</span>/5)</div>
+            <div class="selected-cards" id="communityCards"><span class="empty-hint">点击添加</span></div>
+        </div>
+        
+        <div class="settings">
+            <div>
+                <label>对手</label>
+                <select id="opponents"><option>1</option><option>2</option><option>3</option></select>
+            </div>
+            <div>
+                <label>精度</label>
+                <select id="simulations"><option value="2000">快速</option><option value="5000" selected>标准</option></select>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-calc" onclick="calculate()">🚀 计算胜率</button>
+            <button class="btn btn-reset" onclick="reset()">🔄 重置</button>
+        </div>
+        
+        <div class="result" id="result">
+            <div>胜率</div>
+            <div class="equity-big" id="equityValue">0%</div>
+            <div class="advice" id="advice"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedRank = null, selectedSuit = null;
+        let holeCards = [], communityCards = [];
+        const suitSymbols = {S:'♠', H:'♥', D:'♦', C:'♣'};
+        const redSuits = ['H', 'D'];
+        const rankValues = {'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14};
+
+        document.querySelectorAll('.rank-btn').forEach(btn => {
+            btn.onclick = () => { selectedRank = btn.dataset.rank; updateUI(); };
+        });
+        document.querySelectorAll('.suit-btn').forEach(btn => {
+            btn.onclick = () => { selectedSuit = btn.dataset.suit; updateUI(); };
+        });
+
+        function updateUI() {
+            document.querySelectorAll('.rank-btn').forEach(b => b.classList.toggle('selected', b.dataset.rank === selectedRank));
+            document.querySelectorAll('.suit-btn').forEach(b => b.classList.toggle('selected', b.dataset.suit === selectedSuit));
+            const cur = document.getElementById('current');
+            if (selectedRank && selectedSuit) {
+                const color = redSuits.includes(selectedSuit) ? '#ff5252' : '#ffd700';
+                cur.innerHTML = `<span style="color:${color}">${selectedRank}${suitSymbols[selectedSuit]}</span>`;
+            } else {
+                cur.textContent = '请选择';
+            }
+        }
+
+        function addToHole() {
+            if (holeCards.length >= 2) return alert('手牌已满');
+            addCard(holeCards, 'holeCards', 'holeCount', 2);
+        }
+        function addToCommunity() {
+            if (communityCards.length >= 5) return alert('公共牌已满');
+            addCard(communityCards, 'communityCards', 'commCount', 5);
+        }
+
+        function addCard(target, displayId, countId, max) {
+            if (!selectedRank || !selectedSuit) return alert('请选择点数和花色');
+            const code = selectedRank + selectedSuit;
+            const all = [...holeCards, ...communityCards];
+            if (all.some(c => c.code === code)) return alert('这张牌已存在');
+            target.push({code, rank: selectedRank, suit: selectedSuit});
+            document.getElementById(countId).textContent = target.length;
+            refreshDisplay(displayId, target);
+            selectedRank = selectedSuit = null;
+            updateUI();
+        }
+
+        function refreshDisplay(id, cards) {
+            const el = document.getElementById(id);
+            if (cards.length === 0) {
+                el.innerHTML = '<span class="empty-hint">点击添加</span>';
+                return;
+            }
+            el.innerHTML = cards.map(c => {
+                const isRed = redSuits.includes(c.suit);
+                return `<span class="card-tag ${isRed ? 'red' : ''}" onclick="removeCard('${id}', '${c.code}')">${c.rank}${suitSymbols[c.suit]} ✕</span>`;
+            }).join('');
+        }
+
+        function removeCard(arrayId, code) {
+            const array = arrayId === 'holeCards' ? holeCards : communityCards;
+            const idx = array.findIndex(c => c.code === code);
+            if (idx > -1) {
+                array.splice(idx, 1);
+                refreshDisplay('holeCards', holeCards);
+                refreshDisplay('communityCards', communityCards);
+                document.getElementById('holeCount').textContent = holeCards.length;
+                document.getElementById('commCount').textContent = communityCards.length;
+            }
+        }
+
+        function calculate() {
+            if (holeCards.length !== 2) return alert('请选择2张手牌');
+            const opp = parseInt(document.getElementById('opponents').value);
+            const sim = parseInt(document.getElementById('simulations').value);
+            
+            let wins = 0, ties = 0;
+            for (let i = 0; i < sim; i++) {
+                const result = simulate(opp);
+                if (result === 'win') wins++;
+                else if (result === 'tie') ties += 0.5;
+            }
+            const equity = (wins + ties) / sim * 100;
+            displayResult(equity);
+        }
+
+        function simulate(oppCount) {
+            const deck = [];
+            const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+            const suits = ['S','H','D','C'];
+            for (let r of ranks) {
+                for (let s of suits) {
+                    const code = r + s;
+                    const used = [...holeCards, ...communityCards].map(c => c.code);
+                    if (!used.includes(code)) deck.push({rank: r, suit: s, value: rankValues[r]});
+                }
+            }
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            
+            const board = [...communityCards.map(c => ({value: rankValues[c.rank]}))];
+            const need = 5 - board.length;
+            for (let i = 0; i < need; i++) board.push(deck.pop());
+            
+            const myHand = holeCards.map(c => rankValues[c.rank]);
+            const myScore = evalHand([...myHand, ...board.map(b => b.value)]);
+            
+            let bestOpp = 0;
+            for (let i = 0; i < oppCount; i++) {
+                const oppHand = [deck.pop().value, deck.pop().value];
+                const oppScore = evalHand([...oppHand, ...board.map(b => b.value)]);
+                if (oppScore > bestOpp) bestOpp = oppScore;
+            }
+            
+            if (myScore > bestOpp) return 'win';
+            if (myScore === bestOpp) return 'tie';
+            return 'lose';
+        }
+
+        function evalHand(cards) {
+            const vals = cards.sort((a,b) => b-a);
+            const counts = {};
+            vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+            const cnts = Object.values(counts).sort((a,b) => b-a);
+            
+            if (cnts[0] >= 4) return 8;
+            if (cnts[0] === 3 && cnts[1] === 2) return 7;
+            if (cnts[0] === 3) return 4;
+            if (cnts[0] === 2 && cnts[1] === 2) return 3;
+            if (cnts[0] === 2) return 2;
+            return 1;
+        }
+
+        function displayResult(eq) {
+            document.getElementById('equityValue').textContent = eq.toFixed(1) + '%';
+            const advice = document.getElementById('advice');
+            let text = '', cls = '';
+            if (eq > 70) { text = '🔥 极强牌力！加注'; cls = 'strong'; }
+            else if (eq > 55) { text = '💪 优势牌力，下注/跟注'; cls = 'good'; }
+            else if (eq > 40) { text = '🤔 边缘牌力，谨慎行事'; cls = 'ok'; }
+            else if (eq > 25) { text = '⚠️ 劣势牌力，考虑弃牌'; cls = 'weak'; }
+            else { text = '❌ 极弱牌力，建议弃牌'; cls = 'fold'; }
+            advice.textContent = text;
+            advice.className = 'advice ' + cls;
+            document.getElementById('result').classList.add('show');
+        }
+
+        function reset() {
+            holeCards = []; communityCards = [];
+            selectedRank = selectedSuit = null;
+            document.getElementById('holeCount').textContent = '0';
+            document.getElementById('commCount').textContent = '0';
+            document.getElementById('holeCards').innerHTML = '<span class="empty-hint">点击添加</span>';
+            document.getElementById('communityCards').innerHTML = '<span class="empty-hint">点击添加</span>';
+            document.getElementById('current').textContent = '请选择';
+            document.getElementById('result').classList.remove('show');
+            updateUI();
+        }
+    </script>
+</body>
+</html>
